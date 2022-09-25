@@ -1,0 +1,54 @@
+version: '3.3'
+services:
+
+  api:
+    image: api-image
+    container_name: api
+    build: https://github.com/mentalko/go_api_server
+    restart: unless-stopped
+    ports:
+      - 80:80
+    depends_on:
+      - postgres
+    links:
+      - postgres
+    networks:
+      - application
+
+  bot:
+    image: "${BOT_IMAGE_NAME:-tg_bot-image}"
+    container_name: "${BOT_CONTAINER_NAME:-tg_bot-container}"
+    stop_signal: SIGINT
+    build:
+      context: ./tgbot
+    working_dir: "/usr/src/app/${BOT_NAME:-tg_bot}"
+    volumes:
+      - .:/usr/src/app/${BOT_NAME:-tg_bot}
+    command: python3 bot.py
+    restart: always
+    env_file:
+      - ".env"
+    networks:
+      - application
+
+    ports:
+      - 8000:8000
+
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    restart: unless-stopped
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: postgres
+      POSTGRES_PASSWORD: pass
+    volumes:
+      - ./schema:/docker-entrypoint-initdb.d
+    networks:
+      - application
+
+networks:
+  application:
+    driver: bridge
